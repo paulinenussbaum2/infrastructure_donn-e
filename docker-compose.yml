@@ -1,15 +1,15 @@
 services:
   postgres:
     image: postgis/postgis:16-3.4
-    container_name: infradon-postgres
-    environment:
-      POSTGRES_USER: infradon
-      POSTGRES_PASSWORD: infradon
-      POSTGRES_DB: infradon
+    container_name: infradon-postgres-VAP
+    environment: 
+      POSTGRES_USER: infradon-VAP
+      POSTGRES_PASSWORD: banane
+      POSTGRES_DB: budget
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - budget_data:/var/lib/postgresql/data
 
 volumes:
-  pgdata:
+  budget_data:
