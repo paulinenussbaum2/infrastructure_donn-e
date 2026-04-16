@@ -25,7 +25,7 @@ CREATE TABLE type_intervention (
 
 CREATE TABLE inventaire_mobilier (
     id SERIAL PRIMARY KEY,
-    numero INTEGER UNIQUE NOT NULL,
+    numero INTEGER NOT NULL,
     lieu TEXT NOT NULL,
     latitude DECIMAL(10, 7),
     longitude DECIMAL(10, 7),
