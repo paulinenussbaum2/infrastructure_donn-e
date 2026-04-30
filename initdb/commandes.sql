@@ -14,7 +14,6 @@ SELECT DISTINCT (
 FROM staging.inventaire_mobilier
 WHERE type_materiel IS NOT NULL;
 
-
 INSERT INTO type_materiau (libelle)
 SELECT *
 from (
@@ -24,7 +23,7 @@ WHEN LOWER (TRIM(type_materiau)) LIKE '%bois%' then 'bois'
 WHEN LOWER (TRIM(type_materiau)) LIKE '%métal%' then 'métal'
 WHEN LOWER (TRIM(type_materiau)) LIKE '%metal%' then 'métal'
 WHEN LOWER (TRIM(type_materiau)) LIKE '%sodium%' then 'sodium'
-WHEN LOWER (TRIM(type_materiau)) LIKE '%LED%' then 'LED'
+WHEN LOWER (TRIM(type_materiau)) LIKE '%led%' then 'LED'
 WHEN LOWER (TRIM(type_materiau)) LIKE '%pierre%' then 'pierre'
 WHEN LOWER (TRIM(type_materiau)) LIKE '%béton%' then 'béton'
 END as type_cleaned
@@ -81,21 +80,20 @@ WHERE type_intervention IS NOT NULL;
 
 
 
-INSERT INTO inventaire_mobilier(numero,lieu,latitude,longitude,date_installation,remarques,id_etat,id_type_materiau,id_type_materiel)
-SELECT 
+SELECT
 CASE
     WHEN numero LIKE 'B-%'   THEN CAST(REPLACE(numero, 'B-', '') AS INTEGER)
     WHEN numero LIKE 'B_%'   THEN CAST(REPLACE(numero, 'B_', '') AS INTEGER)
     WHEN numero LIKE 'L-%'   THEN CAST(REPLACE(numero, 'L-', '') AS INTEGER)
     WHEN numero LIKE 'EV_%'  THEN CAST(REPLACE(numero, 'EV_', '') AS INTEGER)
+    WHEN numero LIKE 'PA-%'  THEN CAST(REPLACE(numero, 'PA-', '') AS INTEGER) --- Ligné changée
     WHEN numero LIKE 'P-%'   THEN CAST(REPLACE(numero, 'P-', '') AS INTEGER)
     WHEN numero LIKE 'L_%'   THEN CAST(REPLACE(numero, 'L_', '') AS INTEGER)
     WHEN numero LIKE 'P_%'   THEN CAST(REPLACE(numero, 'P_', '') AS INTEGER)
-    WHEN numero LIKE 'F-%'   THEN CAST(REPLACE(numero, 'F-', '') AS INTEGER)
-    WHEN numero LIKE 'PA-%'   THEN CAST(REPLACE(numero, 'PA-', '') AS INTEGER)
+    WHEN numero LIKE 'F-%'   THEN CAST(REPLACE(numero, 'F-', '') AS INTEGER)  --- Ligné changée
     ELSE CAST(numero AS INTEGER)
     --ELSE NULL
-END, lieu, REPLACE(latitude, ',', '.')::NUMERIC(9,6),REPLACE(longitude, ',', '.')::NUMERIC(9,6),
+END,lieu, REPLACE(latitude, ',', '.')::NUMERIC(9,6),REPLACE(longitude, ',', '.')::NUMERIC(9,6),
     CASE
         WHEN date_installation LIKE '%.%.%' THEN TO_DATE(date_installation, 'DD.MM.YYYY')
         WHEN date_installation LIKE '____-__-__' THEN TO_DATE(date_installation, 'YYYY-MM-DD')
@@ -136,13 +134,244 @@ END, lieu, REPLACE(latitude, ',', '.')::NUMERIC(9,6),REPLACE(longitude, ',', '.'
         ELSE NULL
 END AS date, remarques,
 e.id AS etat_id,
-tm.id AS type_materiau_id,
-tml.id AS type_materiel_id
+tm.id AS id_type_materiau,
+tml.id AS id_type_materiel
 FROM
     staging.inventaire_mobilier AS inv
-LEFT JOIN 
-    public.etat AS e ON inv.etat = e.libelle
-LEFT JOIN 
-public.type_materiau AS tm ON inv.type_materiau = tm.libelle
-LEFT JOIN 
-public.type_materiel AS tml ON inv.type_materiel = tml.libelle;
+LEFT JOIN public.etat AS e 
+    ON e.libelle = CASE
+        WHEN LOWER(TRIM(inv.etat)) LIKE '%usé%'        THEN 'usé'
+        WHEN LOWER(TRIM(inv.etat)) LIKE '%bon%'         THEN 'bon'
+        WHEN LOWER(TRIM(inv.etat)) LIKE '%remplacer%'   THEN 'à remplacer'
+        ELSE NULL
+    END
+LEFT JOIN public.type_materiau AS tm 
+    ON tm.libelle = CASE
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%bois%'   THEN 'bois'
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%métal%'  THEN 'métal'
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%metal%'  THEN 'métal'
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%sodium%' THEN 'sodium'
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%led%'    THEN 'LED'
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%pierre%' THEN 'pierre'
+        WHEN LOWER(TRIM(inv.type_materiau)) LIKE '%béton%'  THEN 'béton'
+        ELSE NULL
+    END
+LEFT JOIN public.type_materiel AS tml 
+    ON tml.libelle = CASE
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%banc%'       THEN 'banc'
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%lampadaire%' THEN 'lampadaire'
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%corbeille%'  THEN 'poubelle'
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%poubelle%'   THEN 'poubelle'
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%fontaine%'   THEN 'fontaine'
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%borne%'      THEN 'borne recharge'
+        WHEN LOWER(TRIM(inv.type_materiel)) LIKE '%panneau%'    THEN 'panneau'
+        ELSE NULL
+    END;
+
+
+
+INSERT INTO fournisseurs_contact (nom_entreprise, contact_nom, contact_prenom, telephone, email, remarques)
+SELECT
+    entreprise,
+    CASE
+        WHEN LOWER(TRIM(contact)) LIKE '%steiner%'  THEN 'Steiner'
+        WHEN LOWER(TRIM(contact)) LIKE '%keller%'   THEN 'Keller'
+        WHEN LOWER(TRIM(contact)) LIKE '%rochat%'   THEN 'Rochat'
+        WHEN LOWER(TRIM(contact)) LIKE '%müller%'   THEN 'Müller'
+        WHEN LOWER(TRIM(contact)) LIKE '%weber%'    THEN 'Weber'
+        WHEN LOWER(TRIM(contact)) LIKE '%roth%'     THEN 'Roth'
+        WHEN LOWER(TRIM(contact)) LIKE '%da silva%' THEN 'Da Silva'
+        WHEN LOWER(TRIM(contact)) LIKE '%alain%'    THEN 'À compléter'
+        WHEN LOWER(TRIM(contact)) LIKE '%robert%'   THEN 'À compléter'
+        WHEN LOWER(TRIM(contact)) LIKE '%jean-paul%' THEN 'À compléter'
+        WHEN contact IS NULL OR TRIM(contact) = ''  THEN 'À compléter'
+        WHEN LOWER(TRIM(contact)) LIKE '%voir site web%' THEN 'À compléter'
+        WHEN LOWER(TRIM(contact)) LIKE '%secrétariat%'   THEN 'À compléter'
+        ELSE 'À compléter'
+    END AS contact_nom,
+    CASE
+        WHEN LOWER(TRIM(contact)) LIKE '%thomas%'    THEN 'Thomas'
+        WHEN LOWER(TRIM(contact)) LIKE '%jean-paul%' THEN 'Jean-Paul'
+        WHEN LOWER(TRIM(contact)) LIKE '%marc%'      THEN 'Marc'
+        WHEN LOWER(TRIM(contact)) LIKE '%alain%'     THEN 'Alain'
+        WHEN LOWER(TRIM(contact)) LIKE '%robert%'    THEN 'Robert'
+        ELSE NULL
+    END AS contact_prenom,
+
+CASE WHEN TRIM(s.telephone) IS NOT NULL THEN
+    REGEXP_REPLACE(
+        REGEXP_REPLACE(TRIM(s.telephone), '^\+41\s*', '0'),
+    '\s', '', 'g')
+END AS telephone,
+
+    CASE
+        WHEN email LIKE '%@%' THEN LOWER(TRIM(email))
+        ELSE '@À compléter'
+    END AS email,
+
+    NULLIF(TRIM(remarques), '') AS remarques
+FROM staging.fournisseurs_contact s;
+
+
+INSERT INTO interventions (date, technicien_nom, technicien_prenom, duree_heures, cout_materiel_chf, remarques, id_type_intervention, id_inventaire_mobilier)
+SELECT
+    CASE
+        WHEN s.date ~ '^\d{2}\.\d{2}\.\d{4}$' THEN TO_DATE(s.date, 'DD.MM.YYYY')
+        WHEN s.date ~ '^\d{4}-\d{2}-\d{2}$'   THEN TO_DATE(s.date, 'YYYY-MM-DD')
+    END AS date,
+
+    CASE
+        WHEN LOWER(TRIM(s.technicien)) IN ('jm', 'jean-marc', 'jean-marc bonvin') THEN 'Bonvin'
+        WHEN LOWER(TRIM(s.technicien)) IN ('pedro', 'p. alves', 'alves pedro')    THEN 'Alves'
+        WHEN LOWER(TRIM(s.technicien)) = 'koffi marc'                              THEN 'Koffi'
+        WHEN LOWER(TRIM(s.technicien)) = 'stagiaire'                               THEN 'Stagiaire'
+        ELSE TRIM(s.technicien)
+    END AS technicien_nom,
+
+    CASE
+        WHEN LOWER(TRIM(s.technicien)) IN ('jm', 'jean-marc', 'jean-marc bonvin') THEN 'Jean-Marc'
+        WHEN LOWER(TRIM(s.technicien)) IN ('pedro', 'p. alves', 'alves pedro')    THEN 'Pedro'
+        WHEN LOWER(TRIM(s.technicien)) = 'koffi marc'                              THEN 'Marc'
+        ELSE NULL
+    END AS technicien_prenom,
+
+    CASE
+        WHEN LOWER(TRIM(s.duree)) = '30 min'      THEN 0.5
+        WHEN LOWER(TRIM(s.duree)) = '1h'          THEN 1.0
+        WHEN LOWER(TRIM(s.duree)) = '1h30'        THEN 1.5
+        WHEN LOWER(TRIM(s.duree)) = '2h'          THEN 2.0
+        WHEN LOWER(TRIM(s.duree)) = '3h'          THEN 3.0
+        WHEN LOWER(TRIM(s.duree)) = 'une matinée' THEN 4.0
+        WHEN LOWER(TRIM(s.duree)) = 'une journée' THEN 8.0
+        ELSE NULL
+    END AS duree_heures,
+
+    CASE
+        WHEN LOWER(TRIM(s.cout_materiel)) IN ('garantie', 'gratuit') THEN 0.00
+        WHEN TRIM(s.cout_materiel) = '' OR s.cout_materiel IS NULL   THEN 0.00
+        ELSE CAST(
+            REGEXP_REPLACE(
+                REGEXP_REPLACE(TRIM(s.cout_materiel), '^CHF\s*', ''),
+            '\.-$', '')
+        AS DECIMAL(10,2))
+    END AS cout_materiel_chf,
+
+
+    NULLIF(TRIM(s.remarques), '') AS remarques,
+
+
+    ti.id AS id_type_intervention,
+
+    im.id AS id_inventaire_mobilier
+
+FROM staging.interventions s
+
+LEFT JOIN public.type_intervention ti
+    ON ti.libelle = CASE
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%peinture%'          THEN 'peinture'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%réparation%'        THEN 'réparation'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%remise en service%' THEN 'réparation'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%remplacement%'      THEN 'remplacement'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%nettoyage%'         THEN 'nettoyage'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%hivernage%'         THEN 'hivernage'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%détartrage%'        THEN 'détartrage'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%mise à jour%'       THEN 'mise à jour logiciel'
+        WHEN LOWER(TRIM(s.type_intervention)) LIKE '%redressage%'        THEN 'réparation'
+        ELSE NULL
+    END
+
+
+LEFT JOIN public.inventaire_mobilier im
+    ON im.lieu ILIKE '%' || REGEXP_REPLACE(
+            TRIM(s.objet),
+            '^(banc\s+public\s+|banc\s+|lampadaire\s+led\s+|lampadaire\s+sodium\s+|lampadaire\s+|fontaine\s+publique\s+|fontaine\s+|poubelle\s+tri\s+|poubelle\s+|borne\s+recharge\s+ev\s+|borne\s+ev\s+|panneau\s+info\s+|panneau\s+)',
+            '', 'i'
+        ) || '%'
+    AND im.id_type_materiel = (
+        SELECT id FROM public.type_materiel WHERE libelle =
+            CASE
+                WHEN LOWER(s.objet) LIKE '%banc%'       THEN 'banc'
+                WHEN LOWER(s.objet) LIKE '%lampadaire%' THEN 'lampadaire'
+                WHEN LOWER(s.objet) LIKE '%fontaine%'   THEN 'fontaine'
+                WHEN LOWER(s.objet) LIKE '%poubelle%'   THEN 'poubelle'
+                WHEN LOWER(s.objet) LIKE '%borne%'      THEN 'borne recharge'
+                WHEN LOWER(s.objet) LIKE '%panneau%'    THEN 'panneau'
+                ELSE NULL
+            END
+    );
+
+
+   INSERT INTO public.signalements (
+    date,
+    civilite,
+    nom,
+    description,
+    urgent,
+    id_statut,
+    id_inventaire_mobilier)
+SELECT
+    CASE
+        WHEN s.date ~ '^\d{2}\.\d{2}\.\d{4}$' THEN TO_DATE(s.date, 'DD.MM.YYYY')
+        WHEN s.date ~ '^\d{4}-\d{2}-\d{2}$'   THEN TO_DATE(s.date, 'YYYY-MM-DD')
+    END AS date,
+    CASE
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%mme%'  THEN 'Mme'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%m. %'  THEN 'M.'
+        ELSE NULL
+    END AS civilite,
+    CASE
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%weber%'            THEN 'Weber'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%rochat%'           THEN 'Rochat'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%dupont%'           THEN 'Dupont'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%pereira%'          THEN 'Pereira'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%patrouille%'       THEN 'Patrouille'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%concierge%'        THEN 'Concierge école'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%email citoyen%'    THEN 'Inconnu'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%passant%'          THEN 'Inconnu'
+        WHEN LOWER(TRIM(s.signale_par)) LIKE '%habitant%'         THEN 'Inconnu'
+        WHEN s.signale_par IS NULL OR TRIM(s.signale_par) = ''    THEN 'Inconnu'
+        ELSE TRIM(s.signale_par)
+    END AS nom,
+
+    NULLIF(TRIM(s.description), '') AS description,
+
+   CASE
+    WHEN LOWER(TRIM(s.urgent)) = 'urgent'       THEN TRUE
+    WHEN LOWER(TRIM(s.urgent)) = 'normal'       THEN FALSE
+    WHEN s.urgent IS NULL OR TRIM(s.urgent) = '' THEN FALSE
+    ELSE FALSE
+END AS urgent,
+
+    st.id AS id_statut,
+
+    im.id AS id_inventaire_mobilier
+
+FROM staging.signalements s
+
+LEFT JOIN public.statut st
+    ON st.libelle = CASE
+        WHEN LOWER(TRIM(s.statut)) LIKE '%en attente%' THEN 'en cours'
+        WHEN LOWER(TRIM(s.statut)) LIKE '%en cours%'   THEN 'en cours'
+        WHEN LOWER(TRIM(s.statut)) LIKE '%fait%'        THEN 'fait'
+        ELSE 'en cours'
+    END
+
+LEFT JOIN public.inventaire_mobilier im
+    ON im.lieu ILIKE '%' || REGEXP_REPLACE(
+            TRIM(s.objet),
+            '^(le\s+|la\s+|les\s+)?(banc\s+public\s+|banc\s+|lampadaire\s+led\s+|lampadaire\s+sodium\s+|lampadaire\s+|fontaine\s+publique\s+|fontaine\s+|poubelle\s+tri\s+|poubelle\s+|corbeille\s+|borne\s+recharge\s+ev\s+|borne\s+ev\s+|borne\s+|panneau\s+info\s+|panneau\s+)(près\s+de\s+|devant\s+|du\s+|de\s+la\s+|de\s+)?',
+            '', 'i'
+        ) || '%'
+    AND im.id_type_materiel = (
+        SELECT id FROM public.type_materiel WHERE libelle =
+            CASE
+                WHEN LOWER(s.objet) LIKE '%banc%'       THEN 'banc'
+                WHEN LOWER(s.objet) LIKE '%lampadaire%' THEN 'lampadaire'
+                WHEN LOWER(s.objet) LIKE '%fontaine%'   THEN 'fontaine'
+                WHEN LOWER(s.objet) LIKE '%poubelle%'   THEN 'poubelle'
+                WHEN LOWER(s.objet) LIKE '%corbeille%'  THEN 'poubelle'
+                WHEN LOWER(s.objet) LIKE '%borne%'      THEN 'borne recharge'
+                WHEN LOWER(s.objet) LIKE '%panneau%'    THEN 'panneau'
+            END
+    );
+
