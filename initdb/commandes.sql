@@ -79,7 +79,7 @@ FROM staging.interventions
 WHERE type_intervention IS NOT NULL;
 
 
-
+INSERT INTO inventaire_mobilier (numero, lieu, latitude, longitude, date_installation, remarques, id_etat, id_type_materiau, id_type_materiel)
 SELECT
 CASE
     WHEN numero LIKE 'B-%'   THEN CAST(REPLACE(numero, 'B-', '') AS INTEGER)
@@ -374,4 +374,20 @@ LEFT JOIN public.inventaire_mobilier im
                 WHEN LOWER(s.objet) LIKE '%panneau%'    THEN 'panneau'
             END
     );
+
+INSERT INTO fournisseurs_type_materiel (id_fournisseur, id_type_materiel)
+SELECT DISTINCT
+    fc.id AS id_fournisseurs_contact,
+    tme.id AS id_type_materiel
+FROM staging.fournisseurs_contact s
+JOIN fournisseurs_contact fc ON fc.nom_entreprise = s.entreprise
+JOIN type_materiel tme ON (
+    (LOWER(s.type_materiel) LIKE '%banc%'       AND tme.libelle = 'banc')       OR
+    (LOWER(s.type_materiel) LIKE '%lampadaire%' AND tme.libelle = 'lampadaire') OR
+    (LOWER(s.type_materiel) LIKE '%éclairage%'  AND tme.libelle = 'lampadaire') OR
+    (LOWER(s.type_materiel) LIKE '%fontaine%'   AND tme.libelle = 'fontaine')   OR
+    (LOWER(s.type_materiel) LIKE '%poubelle%'   AND tme.libelle = 'poubelle')   OR
+    (LOWER(s.type_materiel) LIKE '%borne%'      AND tme.libelle = 'borne recharge') OR
+    (LOWER(s.type_materiel) LIKE '%panneau%'    AND tme.libelle = 'panneau')
+);
 
